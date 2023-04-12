@@ -1,11 +1,13 @@
 import pandas as pd
 from pandas import DataFrame
 
-from util import read_file, remove_newlines, get_shorted_knowledges, get_tokens2, create_embedding
+from util import read_file, remove_newlines, get_shorted_knowledges, get_tokens2, create_embedding, split_to_chunks
 
 '''
 @author meten(mejg@163.com) 2023.4.11
 '''
+
+
 
 
 # 将制定目录中的文件变为知识并存储在csv文件中
@@ -21,12 +23,20 @@ def create_embedding_csv():
     df = DataFrame()
     df['knowledge'] = get_shorted_knowledges()
     df['n'] = df.knowledge.apply(get_tokens2())
-    df['v'] = df.knowledge.apply(lambda x: create_embedding(x))
+    # df['v'] = df.knowledge.apply(lambda x: create_embedding(x))
     df.to_csv('embeddings.csv')
 
 
 if __name__ == "__main__":
-    print('------初始化开始------')
-    files_to_all_knowledges('files')
-    create_embedding_csv()
-    print('------初始化结束------')
+    # print('------初始化开始------')
+    # files_to_all_knowledges('files')
+    # create_embedding_csv()
+    # print('------初始化结束------')
+
+    # file = "files/人工智能介绍"
+    file = "files/红楼梦介绍"
+    with open(file, "r", encoding="UTF-8") as f:
+        text = f.read()
+    clean_text = text.replace("  ", " ").replace("\n", "; ").replace(';',' ')
+    # print(clean_text)
+    split_to_chunks(clean_text, 200)
