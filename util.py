@@ -2,6 +2,7 @@
 import pandas as pd
 import tiktoken
 import pickle
+import configparser
 
 from openai.embeddings_utils import (
     get_embedding,
@@ -10,10 +11,16 @@ from openai.embeddings_utils import (
 @author meten(mejg@163.com)2023.4.11
 '''
 
-api_key = "sk-xxx"
+config = configparser.ConfigParser()
+config.read('config.ini')  # 读取本地配置文件
+
+api_key = config.items("openai-key")[0][1]
 
 # input parameters
+embedding_cache = {}
 embedding_cache_path = "embedding_cache.pkl"  # embeddings will be saved/loaded here
+question_embedding_cache = {}
+question_embedding_cache_path = "question_embedding_cache.pkl"  # embeddings will be saved/loaded here
 default_embedding_engine = "text-embedding-ada-002" #"babbage-similarity"  # text-embedding-ada-002 is recommended
 
 
@@ -21,18 +28,23 @@ default_embedding_engine = "text-embedding-ada-002" #"babbage-similarity"  # tex
 try:
     embedding_cache = pd.read_pickle(embedding_cache_path)
 except FileNotFoundError as e:
-    embeddings = []
     embedding_cache = {}
+
 with open(embedding_cache_path, "wb") as embedding_cache_file:
     pickle.dump(embedding_cache, embedding_cache_file)
+
+try:
+    question_embedding_cache = pd.read_pickle(question_embedding_cache_path)
+except FileNotFoundError as e:
+    question_embedding_cache = {}
+
+with open(question_embedding_cache_path, "wb") as embedding_cache_file:
+    pickle.dump(question_embedding_cache, embedding_cache_file)
+
 
 def get_tokens(text: str):
     tokenizer = tiktoken.get_encoding("cl100k_base")
     return len(tokenizer.encode(text))
-
-# def get_tokens2():
-#     tokenizer = tiktoken.get_encoding("cl100k_base")
-#     return lambda x: len(tokenizer.encode(x))
 
 # this function will get embeddings from the cache and save them there afterward
 def get_embedding_with_cache(
@@ -52,6 +64,11 @@ def get_embedding_with_cache(
     return embedding_cache[(text, token)]
 
 
+def get_question_embdding_with_cache(text: str) -> list:
+   return get_embedding_with_cache(
+        text, question_embedding_cache, question_embedding_cache_path)
+
+
 # Split a text into smaller chunks of size n, preferably ending at the end of a sentence
 def create_chunks(text, n, tokenizer):
     tokens = tokenizer.encode(text)
@@ -63,7 +80,7 @@ def create_chunks(text, n, tokenizer):
         while j > i + int(0.5 * n):
             # Decode the tokens and check for full stop or newline
             chunk = tokenizer.decode(tokens[i:j])
-            if chunk.endswith("。") or chunk.endswith("，") or chunk.endswith("；"):
+            if chunk.endswith("。") or chunk.endswith("，") or chunk.endswith("；") or chunk.endswith("\n"):
                 break
             j -= 1
         # If no end of sentence found, use n tokens as the chunk size

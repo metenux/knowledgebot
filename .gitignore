@@ -1,4 +1,6 @@
 # Byte-compiled / optimized / DLL files
+question_embedding_cache.pkl
+config.ini
 __pycache__/
 *.py[cod]
 *$py.class

@@ -3,7 +3,11 @@ import numpy as np
 import openai
 from openai.embeddings_utils import distances_from_embeddings
 
-from util import get_embedding_with_cache, api_key, embedding_cache
+from util import (
+    get_question_embdding_with_cache,
+    api_key, 
+    embedding_cache
+)
 from openai.embeddings_utils import (
     get_embedding,
     distances_from_embeddings,
@@ -15,9 +19,9 @@ from openai.embeddings_utils import (
 
 openai.api_key = api_key
 
-
+#创建问题上下文
 def create_context(question, max_len=1800):
-    q_embeddings = get_embedding_with_cache(question)
+    q_embeddings = get_question_embdding_with_cache(question)
      # get distances between the source embedding and other embeddings (function from embeddings_utils.py)
     contexts = []
     embeddings = []
@@ -42,8 +46,8 @@ def create_context(question, max_len=1800):
         # Add the length of the text to the current length
         cur_len += tokens[i] + 4
         print(f"distance:{distances[i]}")
-        # If the context is too long, break
-        if cur_len > max_len or distances[i] > 0.15:
+        # If the context is too long or distance is too large, break
+        if cur_len > max_len or distances[i] > 0.18:
             break
 
         # Else add it to the text that is being returned
@@ -53,12 +57,18 @@ def create_context(question, max_len=1800):
     return "\n\n###\n\n".join(returns)
 
 
-def answer_question(model="text-davinci-003", question="请自我介绍", max_tokens=500, stop_sequence=None):
+def answer_question(model="gpt-3.5-turbo", question="请自我介绍", max_tokens=500, stop_sequence=None):
+
+    # context = ""
+    # 注掉这些内容以对比效果
     context = create_context(question)
+    if(context == ''):
+        print("没有找到对应知识")
+        return
 
     try:
-        response = openai.Completion.create(
-            prompt=f"请根据下面知识回答问题:\n\ncontext: {context}\n\n---\n\n问题: {question}\nAnswer:",
+        response = openai.ChatCompletion.create(
+            messages=[{"role": "user", "content": f"请根据下面知识回答问题:\n\ncontext: {context}\n\n---\n\n问题: {question}\nAnswer:"}],
             temperature=0.7,
             max_tokens=max_tokens,
             top_p=1,
@@ -67,12 +77,12 @@ def answer_question(model="text-davinci-003", question="请自我介绍", max_to
             stop=stop_sequence,
             model=model,
         )
-        return response["choices"][0]["text"].strip()
+        # print(response["choices"][0]["text"].strip())
+        print(response.choices[0].message.content)
     except Exception as e:
         print(e)
         return ""
 
 
 if __name__ == '__main__':
-    # print(create_context('介绍一下红楼梦'))
-    print(answer_question(question="介绍一下红楼梦"))
+    answer_question(question="贾宝玉的姨母是谁")
